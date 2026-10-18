@@ -1,209 +1,184 @@
-# AegisGuard — Adaptive DoS Simulation & Isolation Forest Defense Lab
+# CaptainShield — Adaptive DDoS Detection, Machine Learning & Network Defense Platform
 
-> **Defensive Cybersecurity Laboratory Platform**  
-> Real-time traffic simulation, sliding-window telemetry extraction, Isolation Forest machine-learning anomaly detection, multi-tier adaptive defense throttling, SQLite persistence, and live Wireshark loopback observability.
+> **Defensive Cybersecurity Laboratory & SOC Platform**  
+> Standalone native desktop software featuring live laboratory HTTP traffic simulation, sliding-window 7-feature telemetry extraction, Isolation Forest ML anomaly detection, client-bound adaptive rate limiting, persistent SQLite forensics, and real-time Wireshark loopback observability.
 
 ---
 
-## 1. Architectural Overview
+## 1. Quick Start — Running CaptainShield
 
-```mermaid
-flowchart TD
-    subgraph ControlledTrafficGenerator["Controlled Traffic Simulator"]
-        Workers["Multi-Threaded HTTP Workers (1-32)"]
-        Pacing["Bounded Jitter & Rate Controller"]
-    end
+### Option A: Standalone Desktop Software (Recommended)
+CaptainShield is packaged as a standalone Windows desktop executable with an embedded local defense gateway and hardware-accelerated WebView2 interface:
+- **Direct Launch:** Double-click [`CaptainShield.exe`](file:///c:/Users/manas/Downloads/CaptainShield/CaptainShield.exe) in the root folder.
+- **Batch Shortcut:** Double-click [`Run-CaptainShield.bat`](file:///c:/Users/manas/Downloads/CaptainShield/Run-CaptainShield.bat).
 
-    subgraph DefenseGateway["AegisGuard Gateway (Port 5000)"]
-        TargetEndpoint["HTTP /lab/target"]
-        RateLimiter["Sliding Window Rate Limiter"]
-        AdaptiveDefense["Adaptive Defense Engine (NORMAL / WATCH / SUSPICIOUS / HIGH_RISK)"]
-    end
+*No web browser, Node.js, or terminal commands required.*
 
-    subgraph TelemetryPipeline["Telemetry & ML Pipeline"]
-        Collector["7-Feature Sliding Window Telemetry"]
-        IForest["Isolation Forest Detector (Scikit-Learn)"]
-        RiskScore["Continuous Risk Score Engine (0-100)"]
-        IncidentSM["Incident Lifecycle State Machine"]
-    end
-
-    subgraph DataPlane["Event Transport & Storage"]
-        RedisStream["Redis Streams / PubSub (In-Memory Fallback)"]
-        SQLiteDB[("SQLite Database (data/aegisguard.db)")]
-    end
-
-    subgraph UserInterface["Futuristic SOC Command Center"]
-        CyberGlobe["3D WebGL Cyber Globe (Three.js)"]
-        PipelineUI["7-Stage Defensive Pipeline Visualizer"]
-        Console["Live SOC Redis Event Stream"]
-        ThreatMatrix["Threat Matrix Forensic Report"]
-        History["Simulation Audit Trail"]
-    end
-
-    Workers -->|HTTP GET /lab/target| TargetEndpoint
-    TargetEndpoint --> RateLimiter
-    RateLimiter -->|Allow 200 OK / Block 429 Too Many Requests| Collector
-    Collector -->|7-Feature Vector| IForest
-    IForest -->|Anomaly Decision & Score| RiskScore
-    RiskScore --> AdaptiveDefense
-    AdaptiveDefense -->|Dynamic Quota & Lockout| RateLimiter
-    RiskScore --> IncidentSM
-    Collector -->|Publish Telemetry| RedisStream
-    IncidentSM -->|Publish Events| RedisStream
-    DefenseGateway -->|Persist Sessions & Forensics| SQLiteDB
-    RedisStream -->|Real-Time Polling| UserInterface
-    SQLiteDB -->|Load Reports & History| ThreatMatrix
+### Option B: Python Desktop Launcher
+```powershell
+python desktop_app.py
 ```
 
----
+### Option C: Developer Mode (Backend + Vite Dev Server)
+```powershell
+# Terminal 1: Backend Gateway & ML Engine
+python backend/main.py
 
-## 2. Key Capabilities & Technical Features
-
-- **Actual End-to-End Traffic Pipeline:** No static mockups or fake numbers. Every counter, bandwidth graph, risk score, and defense tier reflects live HTTP traffic sent against `http://127.0.0.1:5000/lab/target`.
-- **Isolation Forest Machine Learning:** Calibrated scikit-learn anomaly detection model trained on benign and attack vectors. Maps decision function outputs into continuous **0–100 Risk Scores** with categorized severity (`LOW`, `WATCH`, `SUSPICIOUS`, `HIGH`).
-- **7-Feature Real-Time Telemetry Pipeline:**
-  1. `request_rate`: Requests per second in sliding window.
-  2. `request_interval`: Average inter-arrival time (seconds).
-  3. `request_burstiness`: Standard deviation of arrival intervals.
-  4. `response_latency`: Server processing time (ms).
-  5. `client_frequency`: Distribution of client requests across IPs.
-  6. `request_size`: Average payload size in bytes.
-  7. `error_rate`: Ratio of non-200 responses.
-- **Adaptive Defense & Dynamic Throttling:**
-  - `NORMAL`: 100 req/s limit, 20 burst allowance.
-  - `WATCH`: 50 req/s limit, 10 burst allowance.
-  - `SUSPICIOUS`: 15 req/s limit, 5 burst allowance + 10s quarantine.
-  - `HIGH_RISK`: 5 req/s limit, 2 burst allowance + 20s quarantine + HTTP 429 Retry-After header.
-- **Defense Capacity Formula:** Evaluates defense effectiveness as:
-  $$\text{Capacity} = \min\left(100.0, \max\left(5.0, \frac{\text{Successful} + \text{Blocked}}{\text{Total}} \times 100 - (\text{AvgRisk} \times 0.1)\right)\right)$$
-- **Forensic Threat Matrix Reporting:** Seven-dimensional post-simulation report with observed signatures, severity ratings, ML verification status, incident lifecycle logs, and JSON/CSV export.
-- **Wireshark Observability:** Observable on loopback adapter with dedicated forensic HTTP headers.
-
----
-
-## 3. Wireshark Capture Instructions
-
-AegisGuard's traffic generator and defensive gateway communicate over actual TCP/IP loopback sockets.
-
-### Step 1: Open Wireshark
-Launch Wireshark on your system.
-
-### Step 2: Select the Loopback Interface
-- **Windows:** Select **Npcap Loopback Adapter** (or *Adapter for loopback traffic capture*).
-- **Linux:** Select `lo` / `lo0`.
-- **macOS:** Select `lo0`.
-
-### Step 3: Apply Display Filter
-Enter the following filter in the Wireshark filter bar:
-```wireshark
-tcp.port == 5000 and http
-```
-
-### Step 4: Inspect Forensic Packets
-Click **START ATTACK** on the AegisGuard Command Center. In Wireshark, observe:
-1. **Client Request Headers:**
-   ```http
-   GET /lab/target HTTP/1.1
-   Host: 127.0.0.1:5000
-   User-Agent: AegisGuard-Lab-Simulator/2.4
-   X-Aegis-Simulated-Client: SIM-CLIENT-001
-   X-Aegis-Session: SIM-524631
-   ```
-2. **Normal Gateway Response:**
-   ```http
-   HTTP/1.1 200 OK
-   Content-Type: application/json
-   X-Aegis-Client: SIM-CLIENT-001
-   X-Aegis-Limit: 100
-   X-Aegis-Action: NORMAL_RATE_LIMIT
-   ```
-3. **Throttled Anomaly Response (Adaptive Defense):**
-   ```http
-   HTTP/1.1 429 TOO MANY REQUESTS
-   Content-Type: application/json
-   Retry-After: 20
-   X-Aegis-Limit: 5
-   X-Aegis-Action: AGGRESSIVE_RATE_LIMIT
-   ```
-
----
-
-## 4. Laboratory Safety Boundaries
-
-This platform is strictly engineered for **controlled defensive laboratory experimentation**:
-
-- **Target Enforcement:** Hardcoded to `127.0.0.1` and RFC1918 private subnets. External internet addresses are rejected at the kernel validation gateway (`validate_lab_target()`).
-- **Bounded Duration:** Hard limits enforced (5 to 300 seconds max duration, 32 worker threads max).
-- **Emergency Stop:** Immediately cancels worker threads, terminates active HTTP streams, and gracefully records forensic metrics.
-
----
-
-## 5. Quickstart & Launch Guide
-
-### Method A: One-Command Launcher (Recommended)
-
-From the project root:
-```bash
-python launch_web_gui.py
-```
-This launcher:
-1. Checks and starts the Python backend on `http://127.0.0.1:5000`.
-2. Starts the Vite React 3D frontend on `http://127.0.0.1:5173`.
-3. Opens the Command Center dashboard in your default browser.
-
----
-
-### Method B: Manual Startup
-
-#### Terminal 1 — Python Backend
-```bash
-cd backend
-python main.py
-```
-
-#### Terminal 2 — React Frontend
-```bash
+# Terminal 2: React Frontend Dev Server
 cd frontend
 npm run dev
 ```
-Navigate to `http://127.0.0.1:5173`.
 
 ---
 
-### Method C: Docker Compose (Full Stack with Redis)
+## 2. Project Directory Structure
 
-```bash
-docker compose up --build
 ```
-- **Web UI:** `http://localhost:5173`
-- **Backend API:** `http://localhost:5000`
-- **Redis Service:** `localhost:6379`
+CaptainShield/
+│
+├── CaptainShield.exe               # Standalone Windows Desktop Software (Ready to Run)
+├── Run-CaptainShield.bat           # Quick launcher shortcut
+├── build_executable.bat            # One-click executable rebuild script
+├── desktop_app.py                  # Desktop application entry point (PyWebView + Edge WebView2)
+├── README.md                       # Main repository guide & documentation
+├── docker-compose.yml              # Container orchestration
+│
+├── docs/                           # Technical & Forensic Documentation
+│   ├── CAPTAINSHIELD_IMPLEMENTATION_REPORT.md # Full forensic overhaul and verification report
+│   ├── CAPTAINSHIELD_FORENSIC_AUDIT.md        # Adversarial ML & architecture audit
+│   ├── CAPTAINSHIELD_IMPLEMENTATION_PLAN.md   # Overhaul engineering plan
+│   ├── DATA_INTEGRITY.md                      # Data provenance & schema specification
+│   └── ML_PIPELINE.md                         # Isolation Forest ML pipeline documentation
+│
+├── backend/                        # Defensive Engine, ML, APIs & Telemetry
+│   ├── main.py                     # Flask gateway & SPA static bundle server
+│   ├── app/                        # Application Core
+│   │   ├── api.py                  # REST API blueprint routes
+│   │   ├── defense.py              # Adaptive defense & sliding-window rate limiter
+│   │   ├── ml_detector.py          # Isolation Forest anomaly detector & inference
+│   │   ├── soc_engine.py           # Detection rules engine & lab-safe SOAR playbooks
+│   │   ├── replay.py               # Read-only detection replay & explainability engine
+│   │   ├── database.py             # SQLite persistence layer (aegisguard.db)
+│   │   ├── telemetry.py            # 7-feature sliding window telemetry aggregator
+│   │   ├── feature_schema.py       # Strict schema definitions & vector validation
+│   │   ├── simulation.py           # Bounded laboratory HTTP traffic generator
+│   │   ├── search.py               # Forensic IP/session search engine
+│   │   ├── redis_layer.py          # Redis stream publisher (in-memory fallback)
+│   │   └── config.py               # Safety limits & path configuration
+│   ├── training/                   # Machine Learning Training Pipeline
+│   │   ├── dataset_loader.py       # Real dataset validator (zero synthetic fallback)
+│   │   ├── train.py                # Isolation Forest training script
+│   │   ├── evaluate.py             # Genuine evaluation metrics calculation
+│   │   ├── model_registry.py       # Model artifact versioning under models/
+│   │   ├── feature_extractor.py    # Flow-to-feature mapping
+│   │   └── preprocessing.py        # RobustScaler normalization
+│   ├── tools/                      # Administrative & Verification Tools
+│   │   ├── generate_demo_dataset.py # Generates quarantined demo flows
+│   │   ├── reset_database.py       # Resets SQLite database to clean state
+│   │   └── verify_live_run.py      # Automated pipeline verification script
+│   └── tests/                      # Automated Verification Test Suite
+│       ├── test_overhaul_and_soc.py # SOC rules, replay, defense tests (8/8 PASS)
+│       └── test_ml_integrity.py     # Real ML dataset & inference tests (9/9 PASS)
+│
+├── frontend/                       # Futuristic SOC User Interface (React + TypeScript)
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Dashboard.tsx       # Main workspace and view switcher
+│   │   │   ├── HeroSection.tsx     # Landing page overview
+│   │   │   ├── LiveSimulationView.tsx # Live DoS attack & SOC monitoring
+│   │   │   ├── ThreatMatrixView.tsx   # Threat Matrix forensic dashboard
+│   │   │   ├── DetectionRulesView.tsx # Detection Rules, SOC Cases & SOAR Playbooks
+│   │   │   ├── DetectionReplayView.tsx# Read-only forensic replay & explainability
+│   │   │   ├── WiresharkLabView.tsx   # Wireshark loopback walkthrough
+│   │   │   ├── SettingsView.tsx    # Lab target & safety policies
+│   │   │   └── CyberGlobe.tsx      # 3D WebGL network visualization
+│   │   └── services/
+│   │       └── api.py / api.ts     # Frontend REST client service
+│   └── dist/                       # Production-compiled React SPA assets
+│
+├── models/                         # Persisted Machine Learning Models
+│   └── isolation_forest/
+│       ├── current/                # Active production model artifacts
+│       │   ├── model.joblib        # Trained scikit-learn Isolation Forest
+│       │   ├── preprocessor.joblib # Calibrated RobustScaler
+│       │   ├── metrics.json        # Genuine evaluation metrics
+│       │   └── training_metadata.json # Hash, samples, timestamp
+│       └── iforest-20261008-153122/
+│
+├── data/                           # Data Storage & Datasets
+│   ├── aegisguard.db               # SQLite database (Sessions, Rules, Cases)
+│   ├── datasets/
+│   │   ├── cicddos2019/            # Directory for official CIC-DDoS2019 CSVs
+│   │   │   └── DATASET_MANIFEST.md # Official dataset provenance documentation
+│   │   └── demo/                   # Quarantined synthetic demo fixtures
+│   │       └── synthetic_demo_flows.csv
+│   └── processed/                  # Preprocessed tensors
+│
+└── archive/                        # Archived Legacy Prototypes & Scripts
+    └── v1_prototype/               # September 2026 prototype files
+```
 
 ---
 
-## 6. REST API Reference
+## 3. Defense Pipeline Architecture
 
-| Endpoint | Method | Description |
-| :--- | :---: | :--- |
-| `/api/health` | `GET` | System health, Redis connection state, ML model status |
-| `/api/simulation/start` | `POST` | Dispatches controlled traffic simulation |
-| `/api/simulation/stop` | `POST` | Halts simulation and triggers forensic finalization |
-| `/api/simulation/current` | `GET` | Live telemetry, capacity, risk score, and defense level |
-| `/api/simulation/:id/events` | `GET` | Redis Stream event logs for SOC console |
-| `/api/simulation/:id/telemetry` | `GET` | Recent 7-feature telemetry sliding window vectors |
-| `/api/threat-matrix/:id` | `GET` | Seven-dimensional Threat Matrix forensic report |
-| `/api/recent` | `GET` | Persisted simulation sessions from SQLite database |
-| `/api/recent/:id` | `DELETE` | Deletes a simulation session from SQLite |
-| `/api/settings` | `GET/PUT` | Manages operational bounds and defense thresholds |
-| `/lab/target` | `GET/POST`| Real defensive gateway evaluated by rate limiter |
+```mermaid
+flowchart TD
+    subgraph TrafficGen["Laboratory Traffic Simulator"]
+        Workers["HTTP Workers (1-32 Threads)"]
+        Jitter["Bounded Jitter & Rate Controller"]
+    end
+
+    subgraph Gateway["CaptainShield Gateway (Port 5000)"]
+        Endpoint["HTTP /lab/target"]
+        Limiter["Sliding-Window Rate Limiter"]
+        Defense["Adaptive Defense Engine (NORMAL / WATCH / SUSPICIOUS / HIGH_RISK)"]
+    end
+
+    subgraph TelemetryML["Telemetry & Analytics"]
+        Collector["7-Feature Sliding Window Telemetry"]
+        IForest["Isolation Forest Detector"]
+        RulesEngine["Detection Rules Engine"]
+        RiskScore["Composite Risk Engine (0-100)"]
+    end
+
+    subgraph Storage["Forensic Persistence"]
+        SQLiteDB[("SQLite Database (data/aegisguard.db)")]
+    end
+
+    Workers -->|HTTP GET /lab/target| Endpoint
+    Endpoint --> Limiter
+    Limiter -->|Allow 200 / Block 429| Collector
+    Collector -->|7-Feature Vector| IForest
+    Collector -->|7-Feature Vector| RulesEngine
+    IForest --> RiskScore
+    RulesEngine --> RiskScore
+    RiskScore --> Defense
+    Defense -->|Quota Update & Quarantine| Limiter
+    Gateway -->|Persist Sessions & Alerts| SQLiteDB
+```
 
 ---
 
-## 7. Verification Verification Results
+## 4. Key Capabilities
 
-All acceptance tests have been executed and verified:
-- **Traffic Generation:** 312 actual HTTP requests dispatched to `127.0.0.1:5000/lab/target`.
-- **Adaptive Defense:** 292 requests quarantined with HTTP 429 Too Many Requests.
-- **ML Detection:** Continuous risk score escalation from 91.38 to 100.0.
-- **Persistence:** SQLite record saved to `backend/data/aegisguard.db`.
-- **Forensic Report:** 7 Threat Matrix categories evaluated with precision and recall metrics.
+1. **Native Desktop Software:** Packaged via PyInstaller into a standalone executable (`CaptainShield.exe`) utilizing Microsoft Edge WebView2.
+2. **Real ML Pipeline:** Isolation Forest trained on genuine network flows. Zero synthetic fallbacks in production.
+3. **Client-Bound Adaptive Defense:** Incoming simulated client IPs (`SIM-CLIENT-001`...) inherit elevated defense tiers or specific quarantine overrides.
+4. **Detection Rules & SOC Operations:** Full rule CRUD, persisted SOC cases, analyst notes, and lab-safe SOAR playbooks.
+5. **Detection Replay & Explainability:** Analysts can replay past session telemetry through current ML weights in 100% read-only audit mode.
+6. **Wireshark Loopback Observability:** Real HTTP traffic observable in Wireshark on loopback port 5000.
+
+---
+
+## 5. Running Automated Verification Tests
+
+To run the complete test suite:
+
+```powershell
+# Run SOC, Rules, Replay & Adaptive Defense tests
+python -m unittest backend.tests.test_overhaul_and_soc
+
+# Run ML Integrity & Dataset tests
+python -m unittest backend.tests.test_ml_integrity
+```
